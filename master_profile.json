@@ -1,0 +1,15 @@
+{
+  "name": "Your Name",
+  "github_username": "yourgithub",
+  "skills": ["Python", "AWS", "Terraform", "SQL"],
+  "years_experience": 5,
+  "work_auth": "Eligible in UAE and Remote EU",
+  "salary_expectation": "Negotiable",
+  "experience": [
+    {
+      "action": "Led migration",
+      "context": "Moved legacy services to AWS with Infrastructure as Code",
+      "result": "Reduced infra cost 30%"
+    }
+  ]
+}
