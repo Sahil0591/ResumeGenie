@@ -8,8 +8,8 @@ from typing import Dict, List
 # NOTE: Replace environment variables with secrets management / watsonx Orchestrate inputs.
 ADZUNA_APP_ID = os.getenv("ADZUNA_ID", "")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_KEY", "")
-USAJOBS_EMAIL = os.getenv("USAJOBS_EMAIL", "")
-USAJOBS_USER_AGENT = os.getenv("USAJOBS_USER_AGENT", "")
+USAJOBS_API_KEY = os.getenv("USAJOBS_API_KEY", "")  # developer key
+USAJOBS_USER_AGENT = os.getenv("USAJOBS_USER_AGENT", "")  # descriptive UA with contact email
 
 
 def _hash_job(title: str, company: str, location: str, desc: str) -> str:
@@ -117,13 +117,14 @@ def fetch_wwr_rss() -> List[Dict]:
 
 
 def fetch_usajobs(page: int = 1, keyword: str = "python") -> List[Dict]:
-    if not USAJOBS_EMAIL or not USAJOBS_USER_AGENT:
+    # Requires both API key and user agent per USAJOBS API docs
+    if not USAJOBS_API_KEY or not USAJOBS_USER_AGENT:
         return []
     url = "https://data.usajobs.gov/api/search"
     headers = {
         "User-Agent": USAJOBS_USER_AGENT,
         "Accept": "application/json",
-        "Authorization-Key": USAJOBS_EMAIL,
+        "Authorization-Key": USAJOBS_API_KEY,
     }
     params = {"Page": page, "ResultsPerPage": 25, "Keyword": keyword}
     try:
