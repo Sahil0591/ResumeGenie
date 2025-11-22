@@ -1,4 +1,9 @@
+import os
 import json
+import sys
+from pathlib import Path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 from dotenv import load_dotenv
 load_dotenv()
 from agents.ingestion import ingest_all
@@ -33,6 +38,15 @@ def main(limit: int = 5):
     profile = enrich_profile(profile, repos)
 
     results = []
+    user_email = os.getenv("TEST_USER_EMAIL", "demo_user@example.com")
+    def compute_relevance(profile_skills: list[str], job: dict) -> int:
+        ps = set(map(str.lower, profile_skills))
+        js = set(map(str.lower, job.get("skills_extracted", [])))
+        base = len(ps & js)
+        remote_bonus = 1 if job.get("remote_flag") else 0
+        seniority_bonus = 1 if job.get("seniority") and job.get("seniority") in {"mid","senior","lead"} else 0
+        return base + remote_bonus + seniority_bonus
+
     for job in jobs[:limit]:
         job = validate_job(job)
         if not job.get("valid"):
@@ -40,11 +54,12 @@ def main(limit: int = 5):
         rel_projects = filter_relevant_projects(repos, job)
         resume_md = build_granite_resume(profile, job, rel_projects)
         cheat = build_cheat_sheet(profile, job)
+        relevance = compute_relevance(profile.get("skills", []), job)
         results.append({"job": job, "resume": resume_md, "cheat": cheat})
         # Persist application package
         try:
             with get_session() as s:
-                pkg_id = save_application(s, job["id"], resume_md, cheat)
+                pkg_id = save_application(s, job["id"], resume_md, cheat, user_email, relevance)
             print(f"Saved application package {pkg_id} for job {job['id']}")
         except Exception as e:
             print(f"Failed to save application for job {job['id']}: {e}")

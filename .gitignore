@@ -26,6 +26,7 @@ logs/
 # Coverage / test artifacts
 .coverage
 coverage.xml
+data.json
 htmlcov/
 .pytest_cache/
 # Mypy / type check

@@ -59,7 +59,7 @@ def fetch_adzuna(country: str = "gb", page: int = 1, what: str = "python") -> Li
                     "company": j.get("company", {}).get("display_name", ""),
                     "description": j.get("description", ""),
                     "location": j.get("location", {}).get("display_name", ""),
-                    "salary": j.get("salary_min"),
+                    "salary": j.get("salary_min") or j.get('salary_is_predicted'), 
                     "apply_url": j.get("redirect_url", ""),
                 },
                 source="adzuna",

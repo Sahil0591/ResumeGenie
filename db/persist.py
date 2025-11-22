@@ -39,15 +39,34 @@ def upsert_jobs(session: Session, jobs: List[Dict[str, Any]]) -> List[str]:
     return inserted
 
 
-def save_application(session: Session, job_id: str, resume_markdown: str, cheat_sheet: Dict[str, Any]) -> str:
-    """Persist an application package for a given job id."""
+def save_application(session: Session, job_id: str, resume_markdown: str, cheat_sheet: Dict[str, Any], user_email: str, relevance_score: float | int | None) -> str:
+    """Persist an application package embedding user context.
+    Skips creation if a package already exists for the same job + user_email.
+    Returns new package id or existing package id if skipped."""
     if not job_id:
         raise ValueError("job_id is required")
-    # Ensure job exists
     stmt = select(Job).where(Job.id == job_id)
     job_obj = session.execute(stmt).scalar_one_or_none()
     if job_obj is None:
         raise ValueError("Job not found; insert job before saving application")
+    # Duplicate check: any existing package with same job_id and user_email inside JSON
+    existing_stmt = select(ApplicationPackage).where(ApplicationPackage.job_id == job_id)
+    for existing in session.execute(existing_stmt).scalars():
+        try:
+            if existing.cheat_sheet_json.get("user_email") == user_email:
+                # Update relevance if newly computed score is higher
+                prev_score = existing.cheat_sheet_json.get("relevance_score")
+                if relevance_score is not None and (prev_score is None or relevance_score > prev_score):
+                    existing.cheat_sheet_json["relevance_score"] = relevance_score
+                    session.commit()
+                return existing.id
+        except Exception:
+            pass
+    # Embed user metadata in cheat sheet JSON
+    if user_email:
+        cheat_sheet["user_email"] = user_email
+    if relevance_score is not None:
+        cheat_sheet["relevance_score"] = relevance_score
     pkg = ApplicationPackage(
         job_id=job_id,
         resume_markdown=resume_markdown,
