@@ -1,3 +1,4 @@
+import os
 import json
 from dotenv import load_dotenv
 load_dotenv()
@@ -33,6 +34,7 @@ def main(limit: int = 5):
     profile = enrich_profile(profile, repos)
 
     results = []
+    user_email = os.getenv("TEST_USER_EMAIL", "demo_user@example.com")
     for job in jobs[:limit]:
         job = validate_job(job)
         if not job.get("valid"):
@@ -40,11 +42,13 @@ def main(limit: int = 5):
         rel_projects = filter_relevant_projects(repos, job)
         resume_md = build_granite_resume(profile, job, rel_projects)
         cheat = build_cheat_sheet(profile, job)
+        # Simple relevance score: intersection count of skills
+        relevance = len(set(profile.get("skills", [])).intersection(job.get("skills_extracted", [])))
         results.append({"job": job, "resume": resume_md, "cheat": cheat})
         # Persist application package
         try:
             with get_session() as s:
-                pkg_id = save_application(s, job["id"], resume_md, cheat)
+                pkg_id = save_application(s, job["id"], resume_md, cheat, user_email, relevance)
             print(f"Saved application package {pkg_id} for job {job['id']}")
         except Exception as e:
             print(f"Failed to save application for job {job['id']}: {e}")

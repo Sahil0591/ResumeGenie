@@ -39,15 +39,19 @@ def upsert_jobs(session: Session, jobs: List[Dict[str, Any]]) -> List[str]:
     return inserted
 
 
-def save_application(session: Session, job_id: str, resume_markdown: str, cheat_sheet: Dict[str, Any]) -> str:
-    """Persist an application package for a given job id."""
+def save_application(session: Session, job_id: str, resume_markdown: str, cheat_sheet: Dict[str, Any], user_email: str, relevance_score: float | int | None) -> str:
+    """Persist an application package for a given job id embedding user context in JSON."""
     if not job_id:
         raise ValueError("job_id is required")
-    # Ensure job exists
     stmt = select(Job).where(Job.id == job_id)
     job_obj = session.execute(stmt).scalar_one_or_none()
     if job_obj is None:
         raise ValueError("Job not found; insert job before saving application")
+    # Embed user metadata in cheat sheet JSON
+    if user_email:
+        cheat_sheet["user_email"] = user_email
+    if relevance_score is not None:
+        cheat_sheet["relevance_score"] = relevance_score
     pkg = ApplicationPackage(
         job_id=job_id,
         resume_markdown=resume_markdown,
