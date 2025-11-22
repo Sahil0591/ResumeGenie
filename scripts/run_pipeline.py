@@ -39,6 +39,14 @@ def main(limit: int = 5):
 
     results = []
     user_email = os.getenv("TEST_USER_EMAIL", "demo_user@example.com")
+    def compute_relevance(profile_skills: list[str], job: dict) -> int:
+        ps = set(map(str.lower, profile_skills))
+        js = set(map(str.lower, job.get("skills_extracted", [])))
+        base = len(ps & js)
+        remote_bonus = 1 if job.get("remote_flag") else 0
+        seniority_bonus = 1 if job.get("seniority") and job.get("seniority") in {"mid","senior","lead"} else 0
+        return base + remote_bonus + seniority_bonus
+
     for job in jobs[:limit]:
         job = validate_job(job)
         if not job.get("valid"):
@@ -46,8 +54,7 @@ def main(limit: int = 5):
         rel_projects = filter_relevant_projects(repos, job)
         resume_md = build_granite_resume(profile, job, rel_projects)
         cheat = build_cheat_sheet(profile, job)
-        # Simple relevance score: intersection count of skills
-        relevance = len(set(profile.get("skills", [])).intersection(job.get("skills_extracted", [])))
+        relevance = compute_relevance(profile.get("skills", []), job)
         results.append({"job": job, "resume": resume_md, "cheat": cheat})
         # Persist application package
         try:
