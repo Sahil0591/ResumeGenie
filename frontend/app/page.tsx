@@ -11,6 +11,7 @@ interface Job {
   location: string;
   score: number;
   remote_flag: boolean;
+  apply_url?: string;
 }
 
 export default function Home() {
@@ -173,7 +174,18 @@ export default function Home() {
             <div key={job.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">{job.title}</h2>
-                <p className="text-gray-500">{job.company} • {job.location}</p>
+                <p className="text-gray-500">{job.company} • {job.location}
+                  {job.apply_url && (
+                    <a
+                      href={job.apply_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline text-sm ml-2"
+                    >
+                      View Job
+                    </a>
+                  )}
+                </p>
                 <div className="mt-2 flex gap-2">
                   {job.remote_flag && (
                     <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">Remote</span>
