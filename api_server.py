@@ -104,25 +104,33 @@ def generate_application(job_id: str, db: Session = Depends(get_session)):
     # Convert SQLAlchemy model to dict for your existing agents
     job_dict = {c.name: getattr(job_record, c.name) for c in job_record.__table__.columns}
     
-    # Mock profile for now (In real app, fetch from DB/Request)
-    profile = {
-        "skills": ["Python", "AWS", "Terraform"], 
-        "experience": [{"action": "Built API", "context": "FastAPI", "result": "Fast"}]
-    }
+    if os.path.exists(PROFILE_PATH):
+        with open(PROFILE_PATH, "r", encoding="utf-8") as f:
+            profile = json.load(f)
+    else:
+        # Fallback only if file is missing
+        profile = {
+            "skills": ["Python", "AWS", "Terraform"], 
+            "experience": [{"action": "Built API", "context": "FastAPI", "result": "Fast"}]
+        }
     
     # Run generation logic
-    resume = build_granite_resume(profile, job_dict, []) # Empty projects for now
+    # Pass the projects from the profile if they exist
+    resume = build_granite_resume(profile, job_dict, profile.get("projects", [])) 
     cheat = build_cheat_sheet(profile, job_dict)
     
     # Save to DB
     pkg_id = save_application(db, job_id, resume, cheat, "user@example.com", 0)
+    
     # For preview, use resume as markdown/text
     preview_md = resume if isinstance(resume, str) else str(resume)
+    
     # Sanitize job_id for filename (match frontend logic)
     def sanitize_job_id(job_id):
         return ''.join([c if c.isalnum() else '_' for c in job_id])
     sanitized_job_id = sanitize_job_id(job_id)
     pdf_url = f"/static/resume_{sanitized_job_id}.pdf"
+    
     return {
         "status": "Generated",
         "package_id": pkg_id,
