@@ -26,7 +26,7 @@ export default function Home() {
   const fetchJobs = async () => {
     setError(null);
     try {
-      const res = await fetch('http://localhost:8000/jobs');
+      const res = await fetch('https://resumegenie-wjwk.onrender.com/jobs');
       if (!res.ok) throw new Error('Failed to fetch jobs');
       const data = await res.json();
       setJobs(data);
@@ -41,7 +41,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost:8000/ingest', { method: 'POST' });
+      const res = await fetch('https://resumegenie-wjwk.onrender.com/ingest', { method: 'POST' });
       if (!res.ok) throw new Error('Ingest failed');
       // Poll for updates after 2 seconds
       setTimeout(() => {
@@ -68,7 +68,7 @@ export default function Home() {
         setResumeDownloadUrl(null);
         try {
           const encodedId = encodeURIComponent(jobId);
-          const res = await fetch(`http://localhost:8000/generate/${encodedId}`, { method: 'POST' });
+          const res = await fetch(`https://resumegenie-wjwk.onrender.com/generate/${encodedId}`, { method: 'POST' });
           if (!res.ok) throw new Error('Resume generation failed');
           const data = await res.json();
           // Assume backend returns { package_id, preview_md, pdf_url }
@@ -144,7 +144,7 @@ export default function Home() {
                 <h3 className="text-xl text-gray-800 font-bold mb-4">Resume Preview</h3>
                 {resumeDownloadUrl ? (
                   <iframe
-                    src={`http://localhost:8000${resumeDownloadUrl}`}
+                    src={`https://resumegenie-wjwk.onrender.com${resumeDownloadUrl}`}
                     width="100%"
                     height="1000px"
                     className="rounded-lg border mb-4"
@@ -157,7 +157,7 @@ export default function Home() {
                 )}
                 {resumeDownloadUrl && (
                   <a
-                    href={`http://localhost:8000${resumeDownloadUrl}`}
+                    href={`https://resumegenie-wjwk.onrender.com${resumeDownloadUrl}`}
                     download
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                   >

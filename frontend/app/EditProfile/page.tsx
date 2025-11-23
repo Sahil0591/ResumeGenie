@@ -12,7 +12,7 @@ export default function EditProfile() {
   const [jsonValue, setJsonValue] = useState<string>("");
 
   useEffect(() => {
-    fetch("http://localhost:8000/profile")
+    fetch("https://resumegenie-wjwk.onrender.com/profile")
       .then((res) => res.json())
       .then((data) => {
         setProfile(data);
@@ -157,7 +157,7 @@ export default function EditProfile() {
       setProfile(parsed);
       setError(null);
       setSaving(true);
-      fetch("http://localhost:8000/profile", {
+      fetch("https://resumegenie-wjwk.onrender.com/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed),

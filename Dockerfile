@@ -33,4 +33,4 @@ RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 # Default command to run the pipeline
 # Users can override this command (e.g., to run specific scripts)
-CMD ["python", "-m","scripts.run_pipeline"]
+CMD ["python", "-m","api_server.main"]
