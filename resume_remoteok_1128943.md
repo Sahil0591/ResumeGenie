@@ -16,40 +16,36 @@
 
 \begin{document}
 
-\begin{center}
-\Huge Jane Doe
-\end{center}
-
+\centerline{\Huge Sahil Shindgikar}
 \vspace{5pt}
 
-\href{mailto:jane.doe@gmail.com}{jane.doe@gmail.com} | \href{https://github.com/jane-doe}{github.com/jane-doe} | \href{https://www.linkedin.com/in/jane-doe}{linkedin.com/in/jane-doe}
-
+\centerline{\href{mailto:sahilshindgikar@gmail.com}{sahilshindgikar@gmail.com} | \href{https://www.linkedin.com/in/sahil-shindgikar-22ba9b2b8/}{linkedin.com/in/sahil-shindgikar-22ba9b2b8} | \href{https://github.com/Sahil0591}{github.com/Sahil0591}}
 \vspace{-10pt}
 
-\section*{Skills}
-\textbf{Programming Languages:} Python, JavaScript, TypeScript \\
-\textbf{Frameworks:} React, Node.js, Express \\
-\textbf{Cloud Platforms:} AWS, Google Cloud Platform \\
-\textbf{DevOps:} Terraform, Docker, Kubernetes \\
-\textbf{Databases:} SQL, MongoDB \\
-\textbf{Version Control:} Git
+\section*{Summary}
+Aspiring Software Development Engineer with hands-on projects in Python, Java, C++, AI/ML, and cloud technologies. Interested in scalable systems and applied AI.
 
-\vspace{-6.5pt}
+\section*{Core Skills}
+Python, Java, C++, JavaScript, TypeScript, Machine Learning, Computer Vision, Deep Learning Frameworks, Logistic Regression, Supervised Learning, Unsupervised Learning, Visualization Techniques, AWS, EC2, Cloud Deployment, Cloud Infrastructure, Cloud Storage, IAM Basics, SQL, MySQL, DynamoDB, CUDA, GPU Computing, Parallel Algorithms, Threading, Synchronization, NVIDIA architecture, HTML5, CSS3, Git, GitHub, VS Code, Jupyter Notebook, WSL, Figma, HeidiSQL, Blender
 
-\section*{Achievements}
-\textbf{Led migration to AWS with Infrastructure as Code:} Moved legacy services to AWS using Terraform, reducing infrastructure costs by 30\%.
-\begin{itemize}
-    \item Action: Migrated legacy services to AWS
-    \item Context: Implemented Infrastructure as Code with Terraform
-    \item Result: Reduced infrastructure costs by 30\%
-\end{itemize}
+\section*{Education}
+\textbf{Bachelor of Science in Computer Science} at University of Sussex \hfill 2023-09–2027-05 \\
+GPA: 4.0/4.0 | First Class
 
-\textbf{Developed real-time data processing pipeline:} Built a scalable data processing pipeline using Python, Kafka, and AWS Kinesis, enabling real-time analytics for a client.
-\begin{itemize}
-    \item Action: Developed real-time data processing pipeline
-    \item Context: Utilized Python, Kafka, and AWS Kinesis
-    \item Result: Enabled real-time analytics for the client
-\end{itemize}
+\textbf{Bachelor of Technology in Computer Engineering} at PES University \hfill 2022-09–2023-05
 
+\section*{Certifications}
+\textbf{AWS Cloud Technical Essentials} -- Amazon Web Services (AWS), Coursera \hfill 2025-06 \
+\href{https://www.coursera.org/account/accomplishments/verify/C3YCI8CHHD3N}{Certificate Link} \
+\textbf{Introduction to Parallel Programming with CUDA} -- The Johns Hopkins University, Coursera \hfill 2025-06 \
+\href{https://www.coursera.org/account/accomplishments/verify/CRPQY30R9U8C}{Certificate Link} \
+\textbf{Introduction to Concurrent Programming with GPUs} -- The Johns Hopkins University, Coursera \hfill 2025-06 \
+\href{https://www.coursera.org/account/accomplishments/verify/YSDSWS0ZHXQT}{Certificate Link} \
+\textbf{Unsupervised Learning, Recommenders, Reinforcement Learning} -- DeepLearning.AI, Coursera, Stanford CPD, UVM \hfill 2024-10 \
+\href{https://www.coursera.org/account/accomplishments/verify/WG2EZCYHS2OU}{Certificate Link} \
+\textbf{Advanced Learning Algorithms} -- DeepLearning.AI, Coursera, Stanford CPD, UVM \hfill 2024-08 \
+\href{https://www.coursera.org/account/accomplishments/verify/PFCUO3JNTWH4}{Certificate Link} \
+\textbf{Supervised Machine Learning: Regression and Classification} -- DeepLearning.AI, Coursera, Stanford CPD, UVM \hfill 2024-07 \
+\href{https://www.coursera.org/account/accomplishments/verify/5ZYEBTVX33KK}{Certificate Link} \
 
 \end{document}
