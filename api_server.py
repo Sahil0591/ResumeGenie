@@ -4,6 +4,7 @@ import json
 import os
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from agents.llm_client import safe_generate, OLLAMA_BASE_URL
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
@@ -65,13 +66,39 @@ from fastapi.staticfiles import StaticFiles
 app.mount("/static", StaticFiles(directory="."), name="static")
 
 # Allow Next.js (port 3000) to talk to Python (port 8000)
+# Configure CORS via env for safer deployments
+cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = ["*"] if cors_origins_env.strip() == "*" else [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Frontend reads API base from env; allow all for dev
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Health Endpoint ---
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+# Ollama connectivity check
+@app.get("/health/llm")
+def health_llm():
+    try:
+        sample = safe_generate("say ok")
+        return {
+            "ollama_base_url": OLLAMA_BASE_URL,
+            "reachable": bool(sample),
+            "sample": (sample or "")[:50],
+        }
+    except Exception:
+        return {
+            "ollama_base_url": OLLAMA_BASE_URL,
+            "reachable": False,
+            "sample": "",
+        }
 
 def run_ingestion_pipeline(db: Session):
     """Background task to fetch and process jobs"""
