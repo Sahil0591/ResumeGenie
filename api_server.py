@@ -110,6 +110,15 @@ def health_llm():
             "sample": "",
         }
 
+@app.get("/health/config")
+def health_config():
+    """Echo selected config values as seen by the server."""
+    return {
+        "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL"),
+        "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL"),
+        "CORS_ALLOW_ORIGINS": os.getenv("CORS_ALLOW_ORIGINS", "*"),
+    }
+
 def run_ingestion_pipeline(db: Session):
     """Background task to fetch and process jobs"""
     print("Starting ingestion...")
