@@ -34,8 +34,14 @@ def generate_text(prompt: str, model: Optional[str] = None, stream: bool = False
     if options:
         payload["options"] = options
 
+    # Add headers to bypass ngrok browser warning and set a friendly UA
+    headers = {
+        "ngrok-skip-browser-warning": "1",
+        "User-Agent": "ResumeGenie/1.0 (+render)"
+    }
+
     try:
-        r = requests.post(url, json=payload, timeout=TIMEOUT)
+        r = requests.post(url, json=payload, headers=headers, timeout=TIMEOUT)
         r.raise_for_status()
     except Exception as e:
         print(f"[ERROR] Ollama request failed: {e}")

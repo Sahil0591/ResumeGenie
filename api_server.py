@@ -2,7 +2,7 @@
 
 import json
 import os
-from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
 from agents.llm_client import safe_generate, OLLAMA_BASE_URL
 from sqlalchemy.orm import Session
@@ -82,6 +82,16 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+# Friendly root route to avoid 404s
+@app.get("/")
+def root():
+    return {"service": "ResumeGenie API", "status": "ok"}
+
+# Quietly handle favicon requests
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
 
 # Ollama connectivity check
 @app.get("/health/llm")
