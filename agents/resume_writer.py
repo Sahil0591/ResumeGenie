@@ -1,5 +1,5 @@
 from typing import Dict, List
-from agents.granite_client import safe_generate
+from agents.llm_client import safe_generate
 import subprocess
 import os
 
@@ -60,7 +60,7 @@ def _format_local_resume(master_profile: Dict, job: Dict, projects: List[Dict]) 
     
     return "\n".join(lines)
 
-def build_granite_resume(master_profile: Dict, job: Dict, projects: List[Dict]) -> str:
+def build_granite_resume(master_profile: Dict, job: Dict, projects: List[Dict], sanitized_job_id: str | None = None) -> str:
     sr = open("samp_res.tex", "r", encoding="utf-8").read()
     
     # Compose education lines
@@ -209,10 +209,14 @@ OUTPUT ONLY THE COMPLETE LATEX CODE - NO EXPLANATIONS OR MARKDOWN WRAPPERS.
     generated = generated.replace('[Contact Info]', '')
     generated = generated.replace('[Candidate Name]', master_profile.get('name','Professional'))
     
+    # Determine sanitized job id if not provided
+    if not sanitized_job_id:
+        raw_id = str(job.get('id', 'resume'))
+        sanitized_job_id = ''.join([c if str(c).isalnum() else '_' for c in raw_id])
+
     # Save files
-    job_id = job.get('id', 'temp').replace('/', '_')
-    tex_file = f'resume_{job_id}.tex'
-    pdf_file = f'resume_{job_id}.pdf'
+    tex_file = f'resume_{sanitized_job_id}.tex'
+    pdf_file = f'resume_{sanitized_job_id}.pdf'
     
     try:
         with open(tex_file, 'w', encoding='utf-8') as f:

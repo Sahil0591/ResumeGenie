@@ -67,7 +67,7 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 # Allow Next.js (port 3000) to talk to Python (port 8000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000","https://didynamous-contrastedly-marni.ngrok-free.dev"],
+    allow_origins=["*"],  # Frontend reads API base from env; allow all for dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,21 +114,22 @@ def generate_application(job_id: str, db: Session = Depends(get_session)):
             "experience": [{"action": "Built API", "context": "FastAPI", "result": "Fast"}]
         }
     
-    # Run generation logic
-    # Pass the projects from the profile if they exist
-    resume = build_granite_resume(profile, job_dict, profile.get("projects", [])) 
-    cheat = build_cheat_sheet(profile, job_dict)
-    
-    # Save to DB
-    pkg_id = save_application(db, job_id, resume, cheat, "user@example.com", 0)
-    
-    # For preview, use resume as markdown/text
-    preview_md = resume if isinstance(resume, str) else str(resume)
-    
     # Sanitize job_id for filename (match frontend logic)
     def sanitize_job_id(job_id):
+        # Replace all non-alphanumeric characters with underscores
         return ''.join([c if c.isalnum() else '_' for c in job_id])
     sanitized_job_id = sanitize_job_id(job_id)
+
+    # Run generation logic (Ollama-backed), using sanitized filename
+    resume = build_granite_resume(profile, job_dict, profile.get("projects", []), sanitized_job_id)
+    cheat = build_cheat_sheet(profile, job_dict)
+
+    # Save to DB
+    pkg_id = save_application(db, job_id, resume, cheat, "user@example.com", 0)
+
+    # Preview uses generated text (LaTeX or fallback markdown)
+    preview_md = resume if isinstance(resume, str) else str(resume)
+
     pdf_url = f"/static/resume_{sanitized_job_id}.pdf"
     
     return {
@@ -137,6 +138,32 @@ def generate_application(job_id: str, db: Session = Depends(get_session)):
         "preview_md": preview_md,
         "pdf_url": pdf_url
     }
+
+
+@app.patch("/jobs/{job_id:path}")
+def patch_job(job_id: str, update: dict, db: Session = Depends(get_session)):
+    """PATCH a job with provided fields. Accepts a JSON body with fields to update."""
+    job_record = db.query(Job).filter(Job.id == job_id).first()
+    if not job_record:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    allowed_fields = {
+        "title", "company", "location", "salary", "apply_url",
+        "seniority", "remote_flag", "score", "description"
+    }
+    changed = False
+    for k, v in update.items():
+        if k in allowed_fields:
+            setattr(job_record, k, v)
+            changed = True
+    if not changed:
+        return {"status": "No changes"}
+    try:
+        db.commit()
+        return {"status": "Updated", "id": job_id}
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update job")
 
 
 def main():

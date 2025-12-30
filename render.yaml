@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: resumegenie-api
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    autoDeploy: true
+    healthCheckPath: /jobs
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://example.onrender.com
+      - key: OLLAMA_BASE_URL
+        value: https://your-ollama-endpoint.example.com
+      - key: OLLAMA_MODEL
+        value: llama3:latest
+      - key: DATABASE_URL
+        value: sqlite:///resumegenie.db

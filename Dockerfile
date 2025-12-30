@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     gcc \
+    # Uncomment to enable PDF generation via LaTeX in container (adds size)
+    # texlive-latex-base texlive-fonts-recommended texlive-latex-extra \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the container
@@ -31,6 +33,7 @@ COPY . .
 # Create a non-root user for security (optional but recommended)
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser
-# Default command to run the pipeline
-# Users can override this command (e.g., to run specific scripts)
-CMD ["python", "-m","api_server.main"]
+# Default command: run FastAPI via uvicorn on port 8000
+# Render uses $PORT; override at deploy time if needed
+# Use Render-provided $PORT when available (default to 8000 locally)
+CMD ["sh", "-c", "uvicorn api_server:app --host 0.0.0.0 --port ${PORT:-8000}"]

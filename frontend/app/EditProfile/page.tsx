@@ -12,7 +12,8 @@ export default function EditProfile() {
   const [jsonValue, setJsonValue] = useState<string>("");
 
   useEffect(() => {
-    fetch("https://resumegenie-wjwk.onrender.com/profile")
+    const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+    fetch(`${API_BASE}/profile`)
       .then((res) => res.json())
       .then((data) => {
         setProfile(data);
@@ -157,7 +158,8 @@ export default function EditProfile() {
       setProfile(parsed);
       setError(null);
       setSaving(true);
-      fetch("https://resumegenie-wjwk.onrender.com/profile", {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+      fetch(`${API_BASE}/profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed),
