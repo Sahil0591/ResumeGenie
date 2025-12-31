@@ -4,7 +4,7 @@ import json
 import os
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, Response
 from fastapi.middleware.cors import CORSMiddleware
-from agents.llm_client import safe_generate, OLLAMA_BASE_URL
+from agents.llm_client import safe_generate, get_ollama_base_url
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uvicorn
