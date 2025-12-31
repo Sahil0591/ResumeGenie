@@ -94,6 +94,8 @@ def favicon():
     return Response(status_code=204)
 
 # Ollama connectivity check
+import traceback
+
 @app.get("/health/llm")
 def health_llm():
     try:
@@ -102,12 +104,15 @@ def health_llm():
             "ollama_base_url": OLLAMA_BASE_URL,
             "reachable": bool(sample),
             "sample": (sample or "")[:50],
+            "error": None,
         }
-    except Exception:
+    except Exception as e:
         return {
             "ollama_base_url": OLLAMA_BASE_URL,
             "reachable": False,
             "sample": "",
+            "error": str(e),
+            "traceback": traceback.format_exc(),
         }
 
 @app.get("/health/config")
