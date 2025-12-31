@@ -94,26 +94,19 @@ def favicon():
     return Response(status_code=204)
 
 # Ollama connectivity check
-import traceback
+from agents.llm_client import ollama_get_tags, get_ollama_base_url
 
 @app.get("/health/llm")
 def health_llm():
-    try:
-        sample = safe_generate("say ok")
-        return {
-            "ollama_base_url": OLLAMA_BASE_URL,
-            "reachable": bool(sample),
-            "sample": (sample or "")[:50],
-            "error": None,
-        }
-    except Exception as e:
-        return {
-            "ollama_base_url": OLLAMA_BASE_URL,
-            "reachable": False,
-            "sample": "",
-            "error": str(e),
-            "traceback": traceback.format_exc(),
-        }
+    """Check Ollama /api/tags with all headers and return diagnostics."""
+    result = ollama_get_tags()
+    return {
+        "ollama_base_url": get_ollama_base_url(),
+        "reachable": result["status_code"] == 200,
+        "status_code": result["status_code"],
+        "error": result["error"],
+        "body_preview": result["body"]
+    }
 
 @app.get("/health/config")
 def health_config():
