@@ -14,7 +14,7 @@ from db.db import get_session
 from db.models import Job, ApplicationPackage
 from agents.ingestion import ingest_all
 from agents.analysis import analyze_job, filter_jobs, rank_jobs
-from agents.resume_writer import build_granite_resume, build_cheat_sheet
+from agents.resume_writer import build_granite_resume, build_cheat_sheet, build_preview_markdown
 from agents.ghost_validator import validate_job
 from db.persist import upsert_jobs, save_application
 
@@ -62,20 +62,28 @@ def save_profile(profile: dict):
         raise HTTPException(status_code=500, detail="Failed to save profile")
 
 # Serve static files (PDFs, etc.) from project root
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="."), name="static")
+# Serve static files from dedicated 'static' directory inside repo
+_BASE_DIR = Path(__file__).resolve().parent
+_STATIC_DIR = _BASE_DIR / "static"
+_STATIC_DIR.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 # Allow Next.js (port 3000) to talk to Python (port 8000)
 # Configure CORS via env for safer deployments
-cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "*")
-allow_origins = ["*"] if cors_origins_env.strip() == "*" else [o.strip() for o in cors_origins_env.split(",") if o.strip()]
-
+# CORS: allow configured origins and Vercel preview subdomains
+cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+allow_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
-    allow_credentials=True,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
+    expose_headers=["Content-Disposition"],
+    max_age=600,
 )
 
 # --- Health Endpoint ---
@@ -209,10 +217,11 @@ def generate_application(job_id: str, db: Session = Depends(get_session)):
     # Save to DB
     pkg_id = save_application(db, job_id, resume, cheat, "user@example.com", 0)
 
-    # Preview uses generated text (LaTeX or fallback markdown)
-    preview_md = resume if isinstance(resume, str) else str(resume)
+    # Preview uses a readable markdown regardless of LaTeX compile
+    preview_md = build_preview_markdown(profile, job_dict, profile.get("projects", []))
 
-    pdf_url = f"/static/resume_{sanitized_job_id}.pdf"
+    static_pdf = _STATIC_DIR / f"resume_{sanitized_job_id}.pdf"
+    pdf_url = f"/static/{static_pdf.name}" if static_pdf.exists() else ""
     
     return {
         "status": "Generated",

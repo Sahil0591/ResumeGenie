@@ -2,6 +2,8 @@ from typing import Dict, List
 from agents.llm_client import safe_generate
 import subprocess
 import os
+import shutil
+from pathlib import Path
 
 
 def _format_local_resume(master_profile: Dict, job: Dict, projects: List[Dict]) -> str:
@@ -59,6 +61,11 @@ def _format_local_resume(master_profile: Dict, job: Dict, projects: List[Dict]) 
         lines.append("- None")
     
     return "\n".join(lines)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "static"
+STATIC_DIR.mkdir(exist_ok=True)
+
 
 def build_granite_resume(master_profile: Dict, job: Dict, projects: List[Dict], sanitized_job_id: str | None = None) -> str:
     sr = open("samp_res.tex", "r", encoding="utf-8").read()
@@ -214,31 +221,29 @@ OUTPUT ONLY THE COMPLETE LATEX CODE - NO EXPLANATIONS OR MARKDOWN WRAPPERS.
         raw_id = str(job.get('id', 'resume'))
         sanitized_job_id = ''.join([c if str(c).isalnum() else '_' for c in raw_id])
 
-    # Save files
-    tex_file = f'resume_{sanitized_job_id}.tex'
-    pdf_file = f'resume_{sanitized_job_id}.pdf'
+    # Save files into static directory
+    tex_file = STATIC_DIR / f'resume_{sanitized_job_id}.tex'
+    pdf_file = STATIC_DIR / f'resume_{sanitized_job_id}.pdf'
     
     try:
-        with open(tex_file, 'w', encoding='utf-8') as f:
-            f.write(generated)
+        tex_file.write_text(generated, encoding='utf-8')
         print(f"[INFO] LaTeX saved to {tex_file}")
-        
-        try:
+
+        # Compile with pdflatex into STATIC_DIR (Docker installs TeX Live)
+        if shutil.which('pdflatex'):
+            cmd = ['pdflatex', '-interaction=nonstopmode', f'-output-directory={STATIC_DIR}', str(tex_file)]
             result = subprocess.run(
-                ['pdflatex', '-interaction=nonstopmode', tex_file],
+                cmd,
                 capture_output=True,
-                timeout=120,
-                cwd='.',
+                timeout=180,
                 text=True
             )
-            if result.returncode == 0 and os.path.exists(pdf_file):
-                print(f"[SUCCESS] PDF generated: {pdf_file}")
+            if result.returncode == 0 and pdf_file.exists():
+                print(f"[SUCCESS] PDF generated via pdflatex: {pdf_file}")
             else:
-                print(f"[WARN] PDFLaTeX failed: {result.stderr[:200]}")
-        except FileNotFoundError:
-            print(f"[WARN] pdflatex not found in PATH")
-        except Exception as pdf_err:
-            print(f"[WARN] PDF generation failed: {pdf_err}")
+                print(f"[WARN] PDFLaTeX failed: {result.stdout[:200]} {result.stderr[:200]}")
+        else:
+            print("[WARN] pdflatex not found; PDF will not be generated")
     except Exception as e:
         print(f"[ERROR] Could not save resume: {e}")
     
@@ -251,5 +256,10 @@ def build_cheat_sheet(master_profile: Dict, job: Dict) -> Dict:
         "years_experience": master_profile.get("years_experience"),
         "primary_stack": ", ".join(master_profile.get("skills", [])[:5]),
         "work_auth": master_profile.get("work_auth"),
-        "salary_expectation": master_profile.get("salary_expectation", "Negotiable"),
     }
+
+def build_preview_markdown(master_profile: Dict, job: Dict, projects: List[Dict]) -> str:
+    """Return a simple Markdown preview independent of LaTeX compile.
+    Uses profile + job data so UI can render a readable preview.
+    """
+    return _format_local_resume(master_profile, job, projects)

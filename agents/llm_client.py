@@ -2,6 +2,7 @@
 
 # --- Cloudflare Access header helper ---
 import os
+import time
 import requests
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
@@ -62,7 +63,13 @@ def get_gemini_model() -> str:
 def _gemini_headers() -> Dict[str, str]:
     return {"Content-Type": "application/json"}
 
-def gemini_generate(prompt: str, options: Optional[Dict[str, Any]] = None, timeout: int = 30) -> Optional[str]:
+def get_gemini_timeout() -> int:
+    try:
+        return int(os.getenv("GEMINI_TIMEOUT", "60"))
+    except Exception:
+        return 60
+
+def gemini_generate(prompt: str, options: Optional[Dict[str, Any]] = None, timeout: Optional[int] = None) -> Optional[str]:
     key = get_gemini_key()
     if not key:
         return None
@@ -72,18 +79,27 @@ def gemini_generate(prompt: str, options: Optional[Dict[str, Any]] = None, timeo
     }
     if options:
         payload["generationConfig"] = options
-    try:
-        resp = requests.post(url, json=payload, headers=_gemini_headers(), timeout=timeout)
-        resp.raise_for_status()
-        data = resp.json()
-        candidates = data.get("candidates", [])
-        if candidates:
-            parts = candidates[0].get("content", {}).get("parts", [])
-            return "".join(p.get("text", "") for p in parts)
-        return None
-    except Exception as e:
-        print(f"[ERROR] Gemini request failed: {e}")
-        return None
+    t = timeout or get_gemini_timeout()
+    for attempt in range(3):
+        try:
+            resp = requests.post(url, json=payload, headers=_gemini_headers(), timeout=t)
+            resp.raise_for_status()
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                text = "".join(p.get("text", "") for p in parts).strip()
+                return text or None
+            return None
+        except requests.exceptions.Timeout:
+            if attempt < 2:
+                time.sleep(1 + attempt)
+                continue
+            print("[ERROR] Gemini request timed out after retries")
+            return None
+        except Exception as e:
+            print(f"[ERROR] Gemini request failed: {e}")
+            return None
 
 def gemini_health() -> Dict[str, Any]:
     key = get_gemini_key()
