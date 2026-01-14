@@ -2,6 +2,12 @@ from typing import Dict, List
 from agents.llm_client import safe_generate
 import subprocess
 import os
+import shutil
+import platform
+import tarfile
+import io
+from pathlib import Path
+import requests
 
 
 def _format_local_resume(master_profile: Dict, job: Dict, projects: List[Dict]) -> str:
@@ -222,21 +228,67 @@ OUTPUT ONLY THE COMPLETE LATEX CODE - NO EXPLANATIONS OR MARKDOWN WRAPPERS.
         with open(tex_file, 'w', encoding='utf-8') as f:
             f.write(generated)
         print(f"[INFO] LaTeX saved to {tex_file}")
-        
+
+        # Prefer 'tectonic' if available (download at runtime on Linux if missing); fallback to 'pdflatex'
+        def _ensure_tectonic_bin() -> str | None:
+            if shutil.which('tectonic'):
+                return 'tectonic'
+            if platform.system() == 'Linux':
+                bin_dir = Path(__file__).resolve().parent.parent / 'bin'
+                bin_dir.mkdir(parents=True, exist_ok=True)
+                local_bin = bin_dir / 'tectonic'
+                if local_bin.exists():
+                    local_bin.chmod(0o755)
+                    return str(local_bin)
+                url = 'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz'
+                try:
+                    resp = requests.get(url, timeout=60)
+                    resp.raise_for_status()
+                    with tarfile.open(fileobj=io.BytesIO(resp.content), mode='r:gz') as tar:
+                        member = next((m for m in tar.getmembers() if m.name.endswith('/tectonic')), None)
+                        if not member:
+                            return None
+                        extracted = tar.extractfile(member)
+                        if not extracted:
+                            return None
+                        local_bin.write_bytes(extracted.read())
+                        local_bin.chmod(0o755)
+                        return str(local_bin)
+                except Exception as dl_err:
+                    print(f"[WARN] Could not download tectonic: {dl_err}")
+                    return None
+            return None
+
         try:
-            result = subprocess.run(
-                ['pdflatex', '-interaction=nonstopmode', tex_file],
-                capture_output=True,
-                timeout=120,
-                cwd='.',
-                text=True
-            )
-            if result.returncode == 0 and os.path.exists(pdf_file):
-                print(f"[SUCCESS] PDF generated: {pdf_file}")
+            tectonic_path = _ensure_tectonic_bin()
+            if tectonic_path:
+                cmd = [tectonic_path, '--outdir', '.', '--keep-logs', '--keep-intermediates', tex_file]
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=180,
+                    cwd='.',
+                    text=True
+                )
+                if result.returncode == 0 and os.path.exists(pdf_file):
+                    print(f"[SUCCESS] PDF generated via tectonic: {pdf_file}")
+                else:
+                    print(f"[WARN] Tectonic failed: {result.stdout[:200]} {result.stderr[:200]}")
+            elif shutil.which('pdflatex'):
+                cmd = ['pdflatex', '-interaction=nonstopmode', tex_file]
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=180,
+                    cwd='.',
+                    text=True
+                )
+                if result.returncode == 0 and os.path.exists(pdf_file):
+                    print(f"[SUCCESS] PDF generated via pdflatex: {pdf_file}")
+                else:
+                    print(f"[WARN] PDFLaTeX failed: {result.stdout[:200]} {result.stderr[:200]}")
             else:
-                print(f"[WARN] PDFLaTeX failed: {result.stderr[:200]}")
-        except FileNotFoundError:
-            print(f"[WARN] pdflatex not found in PATH")
+                print("[WARN] No LaTeX engine found (need 'tectonic' or 'pdflatex')")
         except Exception as pdf_err:
             print(f"[WARN] PDF generation failed: {pdf_err}")
     except Exception as e:
@@ -251,5 +303,4 @@ def build_cheat_sheet(master_profile: Dict, job: Dict) -> Dict:
         "years_experience": master_profile.get("years_experience"),
         "primary_stack": ", ".join(master_profile.get("skills", [])[:5]),
         "work_auth": master_profile.get("work_auth"),
-        "salary_expectation": master_profile.get("salary_expectation", "Negotiable"),
     }
