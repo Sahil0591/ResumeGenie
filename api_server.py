@@ -126,6 +126,23 @@ def health_llm():
             "body_preview": result["body"],
         }
 
+@app.get("/health/llm-generate")
+def health_llm_generate():
+    """Attempt a tiny generation via safe_generate and return a preview."""
+    try:
+        sample = safe_generate("Say OK")
+        return {
+            "llm_provider": get_llm_provider(),
+            "reachable": bool(sample),
+            "sample_preview": (sample or "")[:200],
+        }
+    except Exception as e:
+        return {
+            "llm_provider": get_llm_provider(),
+            "reachable": False,
+            "error": str(e),
+        }
+
 @app.get("/health/config")
 def health_config():
     """Echo selected config values as seen by the server."""

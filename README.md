@@ -1,6 +1,6 @@
-# ResumeGenie: Simple Agentic Setup (Ollama + FastAPI)
+# ResumeGenie: Backend + Frontend (Gemini + FastAPI + Next.js)
 
-Global API-driven job ingestion + intelligent filtering + local LLM résumé generation via Ollama.
+Global API-driven job ingestion + intelligent filtering + cloud-hosted LLM résumé generation via Google Gemini.
 
 ## Architecture Overview
 Agents (Python modules) implement discrete capabilities for a lightweight, local workflow:
@@ -11,7 +11,7 @@ Agents (Python modules) implement discrete capabilities for a lightweight, local
 | Analysis (skills, timezone, seniority) | `agents/analysis.py` | Regex / heuristic scoring |
 | GitHub Profile Enrichment | `agents/github_scanner.py` | GraphQL/API integration optional |
 | Ghost Job Validation | `agents/ghost_validator.py` | HEAD request prevents dead listings |
-| Resume + Cheat Sheet Generation | `agents/resume_writer.py` / `agents/cheat_sheet.py` | Ollama local LLM (no Granite) |
+| Resume + Cheat Sheet Generation | `agents/resume_writer.py` / `agents/cheat_sheet.py` | Gemini via Generative Language API |
 | Orchestration Script | `agents/agent_runner.py` | Ranks top 5 and calls /generate |
 
 ## Standard Job Object (DB)
@@ -38,14 +38,18 @@ $env:NEXT_PUBLIC_API_BASE="http://localhost:8000"
 NEXT_PUBLIC_API_BASE=http://localhost:8000
 ```
 
-## Environment Variables (example .env)
+## Environment Variables
+Backend `.env` (see `.env.example`, do NOT commit secrets):
 ```
-# Frontend ↔ Backend
-NEXT_PUBLIC_API_BASE=http://localhost:8000
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-1.5-flash-latest
+CORS_ALLOW_ORIGINS=http://localhost:3000,https://your-app.vercel.app
+```
 
-# Ollama client
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
+Frontend `.env.local`:
+```
+NEXT_PUBLIC_API_BASE=http://localhost:8000
 ```
 
 Optional (data sources):
@@ -55,15 +59,12 @@ ADZUNA_KEY=xxxxx
 GITHUB_TOKEN=optional_for_private_or_higher_rate
 ```
 
-## Ollama Model Usage
-The file `agents/llm_client.py` wraps the local Ollama HTTP API (`/api/generate`). Resume generation in `agents/resume_writer.py` calls `safe_generate()` which tries the configured model and small fallbacks.
+## LLM Usage
+`agents/llm_client.py` supports Google Gemini and (optionally) local Ollama for dev. `safe_generate()` routes to Gemini when `LLM_PROVIDER=gemini` and falls back to Ollama otherwise.
 
-To change model or parameters, set `OLLAMA_MODEL` or pass `options` in `generate_text()`.
-
-Expose the backend to the internet via ngrok when needed:
-```cmd
-ngrok http 8000
-# Then set NEXT_PUBLIC_API_BASE to the ngrok URL
+Gemini endpoint used:
+```
+POST https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}
 ```
 
 ## Endpoints
@@ -75,12 +76,27 @@ ngrok http 8000
 - POST /generate/{id}: build tailored resume + cheat sheet; writes resume_{sanitized_id}.pdf
 - PATCH /jobs/{id}: update selected job fields
 - Static mount: /static serves generated PDFs and assets
+ - GET /health: basic service up check
+ - GET /health/config: echo environment as seen by the server
+ - GET /health/llm: provider-aware health (Gemini/Ollama)
+ - GET /health/llm-generate: test a tiny generation and return a preview
 
 ## Agent Runner
 Run the lightweight agent to generate top 5 automatically:
 ```cmd
 python -m agents.agent_runner
 ```
+
+## Deployment
+Backend (Render):
+- Set env vars: `LLM_PROVIDER`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `CORS_ALLOW_ORIGINS`
+- Start command: `uvicorn api_server:app --host 0.0.0.0 --port 8000`
+- Verify: `/health/config` and `/health/llm` should be OK
+
+Frontend (Vercel):
+- Root directory: `frontend/`
+- Env var: `NEXT_PUBLIC_API_BASE=https://<your-render-service>.onrender.com`
+- Deploy and confirm the app can call `/health/llm`
 
 ## Next Steps
 - Add connectors (USAJobs, HN Algolia)
