@@ -231,32 +231,53 @@ OUTPUT ONLY THE COMPLETE LATEX CODE - NO EXPLANATIONS OR MARKDOWN WRAPPERS.
 
         # Prefer 'tectonic' if available (download at runtime on Linux if missing); fallback to 'pdflatex'
         def _ensure_tectonic_bin() -> str | None:
+            # 1) System PATH
             if shutil.which('tectonic'):
                 return 'tectonic'
-            if platform.system() == 'Linux':
-                bin_dir = Path(__file__).resolve().parent.parent / 'bin'
-                bin_dir.mkdir(parents=True, exist_ok=True)
-                local_bin = bin_dir / 'tectonic'
-                if local_bin.exists():
-                    local_bin.chmod(0o755)
-                    return str(local_bin)
-                url = 'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz'
+            # 2) Local cached binary
+            bin_dir = Path(__file__).resolve().parent.parent / 'bin'
+            local_bin = bin_dir / 'tectonic'
+            if local_bin.exists():
                 try:
-                    resp = requests.get(url, timeout=60)
-                    resp.raise_for_status()
-                    with tarfile.open(fileobj=io.BytesIO(resp.content), mode='r:gz') as tar:
-                        member = next((m for m in tar.getmembers() if m.name.endswith('/tectonic')), None)
-                        if not member:
-                            return None
-                        extracted = tar.extractfile(member)
-                        if not extracted:
-                            return None
-                        local_bin.write_bytes(extracted.read())
-                        local_bin.chmod(0o755)
-                        return str(local_bin)
+                    local_bin.chmod(0o755)
+                except Exception:
+                    pass
+                return str(local_bin)
+            # 3) Linux runtime download from latest release
+            if platform.system() == 'Linux':
+                try:
+                    bin_dir.mkdir(parents=True, exist_ok=True)
+                    candidates = [
+                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz',
+                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.xz',
+                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-musl.tar.gz',
+                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-musl.tar.xz',
+                    ]
+                    for url in candidates:
+                        try:
+                            resp = requests.get(url, timeout=60, allow_redirects=True)
+                            resp.raise_for_status()
+                            bio = io.BytesIO(resp.content)
+                            with tarfile.open(fileobj=bio, mode='r:*') as tar:
+                                member = next((m for m in tar.getmembers() if m.isfile() and m.name.split('/')[-1] == 'tectonic'), None)
+                                if not member:
+                                    continue
+                                f = tar.extractfile(member)
+                                if not f:
+                                    continue
+                                local_bin.write_bytes(f.read())
+                                try:
+                                    local_bin.chmod(0o755)
+                                except Exception:
+                                    pass
+                                print(f"[INFO] Downloaded Tectonic from {url}")
+                                return str(local_bin)
+                        except Exception as e:
+                            print(f"[WARN] Tectonic fetch failed for {url}: {e}")
+                            continue
                 except Exception as dl_err:
                     print(f"[WARN] Could not download tectonic: {dl_err}")
-                    return None
+            # 4) None: caller can try pdflatex
             return None
 
         try:
