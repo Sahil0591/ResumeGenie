@@ -14,7 +14,7 @@ from db.db import get_session
 from db.models import Job, ApplicationPackage
 from agents.ingestion import ingest_all
 from agents.analysis import analyze_job, filter_jobs, rank_jobs
-from agents.resume_writer import build_granite_resume, build_cheat_sheet
+from agents.resume_writer import build_granite_resume, build_cheat_sheet, build_preview_markdown
 from agents.ghost_validator import validate_job
 from db.persist import upsert_jobs, save_application
 
@@ -217,8 +217,8 @@ def generate_application(job_id: str, db: Session = Depends(get_session)):
     # Save to DB
     pkg_id = save_application(db, job_id, resume, cheat, "user@example.com", 0)
 
-    # Preview uses generated text (LaTeX or fallback markdown)
-    preview_md = resume if isinstance(resume, str) else str(resume)
+    # Preview uses a readable markdown regardless of LaTeX compile
+    preview_md = build_preview_markdown(profile, job_dict, profile.get("projects", []))
 
     static_pdf = _STATIC_DIR / f"resume_{sanitized_job_id}.pdf"
     pdf_url = f"/static/{static_pdf.name}" if static_pdf.exists() else ""

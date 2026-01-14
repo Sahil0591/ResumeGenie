@@ -257,3 +257,9 @@ def build_cheat_sheet(master_profile: Dict, job: Dict) -> Dict:
         "primary_stack": ", ".join(master_profile.get("skills", [])[:5]),
         "work_auth": master_profile.get("work_auth"),
     }
+
+def build_preview_markdown(master_profile: Dict, job: Dict, projects: List[Dict]) -> str:
+    """Return a simple Markdown preview independent of LaTeX compile.
+    Uses profile + job data so UI can render a readable preview.
+    """
+    return _format_local_resume(master_profile, job, projects)
