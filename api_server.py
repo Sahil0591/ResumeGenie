@@ -94,24 +94,45 @@ def favicon():
     return Response(status_code=204)
 
 # Ollama connectivity check
-from agents.llm_client import ollama_get_tags, get_ollama_base_url
+from agents.llm_client import (
+    ollama_get_tags,
+    get_ollama_base_url,
+    get_llm_provider,
+    gemini_health,
+    get_gemini_model,
+)
 
 @app.get("/health/llm")
 def health_llm():
-    """Check Ollama /api/tags with all headers and return diagnostics."""
-    result = ollama_get_tags()
-    return {
-        "ollama_base_url": get_ollama_base_url(),
-        "reachable": result["status_code"] == 200,
-        "status_code": result["status_code"],
-        "error": result["error"],
-        "body_preview": result["body"]
-    }
+    """Provider-aware health: Gemini or Ollama diagnostics."""
+    if get_llm_provider() == "gemini":
+        result = gemini_health()
+        return {
+            "llm_provider": "gemini",
+            "gemini_model": get_gemini_model(),
+            "reachable": result["status_code"] == 200,
+            "status_code": result["status_code"],
+            "error": result["error"],
+            "body_preview": result["body"],
+        }
+    else:
+        result = ollama_get_tags()
+        return {
+            "llm_provider": "ollama",
+            "ollama_base_url": get_ollama_base_url(),
+            "reachable": result["status_code"] == 200,
+            "status_code": result["status_code"],
+            "error": result["error"],
+            "body_preview": result["body"],
+        }
 
 @app.get("/health/config")
 def health_config():
     """Echo selected config values as seen by the server."""
     return {
+        "LLM_PROVIDER": os.getenv("LLM_PROVIDER", "gemini"),
+        "GEMINI_MODEL": os.getenv("GEMINI_MODEL"),
+        "HAS_GEMINI_API_KEY": bool(os.getenv("GEMINI_API_KEY")),
         "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL"),
         "OLLAMA_MODEL": os.getenv("OLLAMA_MODEL"),
         "CORS_ALLOW_ORIGINS": os.getenv("CORS_ALLOW_ORIGINS", "*"),
