@@ -3,11 +3,7 @@ from agents.llm_client import safe_generate
 import subprocess
 import os
 import shutil
-import platform
-import tarfile
-import io
 from pathlib import Path
-import requests
 
 
 def _format_local_resume(master_profile: Dict, job: Dict, projects: List[Dict]) -> str:
@@ -65,6 +61,11 @@ def _format_local_resume(master_profile: Dict, job: Dict, projects: List[Dict]) 
         lines.append("- None")
     
     return "\n".join(lines)
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+STATIC_DIR = BASE_DIR / "static"
+STATIC_DIR.mkdir(exist_ok=True)
+
 
 def build_granite_resume(master_profile: Dict, job: Dict, projects: List[Dict], sanitized_job_id: str | None = None) -> str:
     sr = open("samp_res.tex", "r", encoding="utf-8").read()
@@ -220,98 +221,29 @@ OUTPUT ONLY THE COMPLETE LATEX CODE - NO EXPLANATIONS OR MARKDOWN WRAPPERS.
         raw_id = str(job.get('id', 'resume'))
         sanitized_job_id = ''.join([c if str(c).isalnum() else '_' for c in raw_id])
 
-    # Save files
-    tex_file = f'resume_{sanitized_job_id}.tex'
-    pdf_file = f'resume_{sanitized_job_id}.pdf'
+    # Save files into static directory
+    tex_file = STATIC_DIR / f'resume_{sanitized_job_id}.tex'
+    pdf_file = STATIC_DIR / f'resume_{sanitized_job_id}.pdf'
     
     try:
-        with open(tex_file, 'w', encoding='utf-8') as f:
-            f.write(generated)
+        tex_file.write_text(generated, encoding='utf-8')
         print(f"[INFO] LaTeX saved to {tex_file}")
 
-        # Prefer 'tectonic' if available (download at runtime on Linux if missing); fallback to 'pdflatex'
-        def _ensure_tectonic_bin() -> str | None:
-            # 1) System PATH
-            if shutil.which('tectonic'):
-                return 'tectonic'
-            # 2) Local cached binary
-            bin_dir = Path(__file__).resolve().parent.parent / 'bin'
-            local_bin = bin_dir / 'tectonic'
-            if local_bin.exists():
-                try:
-                    local_bin.chmod(0o755)
-                except Exception:
-                    pass
-                return str(local_bin)
-            # 3) Linux runtime download from latest release
-            if platform.system() == 'Linux':
-                try:
-                    bin_dir.mkdir(parents=True, exist_ok=True)
-                    candidates = [
-                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.gz',
-                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-gnu.tar.xz',
-                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-musl.tar.gz',
-                        'https://github.com/tectonic-typesetting/tectonic/releases/latest/download/tectonic-x86_64-unknown-linux-musl.tar.xz',
-                    ]
-                    for url in candidates:
-                        try:
-                            resp = requests.get(url, timeout=60, allow_redirects=True)
-                            resp.raise_for_status()
-                            bio = io.BytesIO(resp.content)
-                            with tarfile.open(fileobj=bio, mode='r:*') as tar:
-                                member = next((m for m in tar.getmembers() if m.isfile() and m.name.split('/')[-1] == 'tectonic'), None)
-                                if not member:
-                                    continue
-                                f = tar.extractfile(member)
-                                if not f:
-                                    continue
-                                local_bin.write_bytes(f.read())
-                                try:
-                                    local_bin.chmod(0o755)
-                                except Exception:
-                                    pass
-                                print(f"[INFO] Downloaded Tectonic from {url}")
-                                return str(local_bin)
-                        except Exception as e:
-                            print(f"[WARN] Tectonic fetch failed for {url}: {e}")
-                            continue
-                except Exception as dl_err:
-                    print(f"[WARN] Could not download tectonic: {dl_err}")
-            # 4) None: caller can try pdflatex
-            return None
-
-        try:
-            tectonic_path = _ensure_tectonic_bin()
-            if tectonic_path:
-                cmd = [tectonic_path, '--outdir', '.', '--keep-logs', '--keep-intermediates', tex_file]
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    timeout=180,
-                    cwd='.',
-                    text=True
-                )
-                if result.returncode == 0 and os.path.exists(pdf_file):
-                    print(f"[SUCCESS] PDF generated via tectonic: {pdf_file}")
-                else:
-                    print(f"[WARN] Tectonic failed: {result.stdout[:200]} {result.stderr[:200]}")
-            elif shutil.which('pdflatex'):
-                cmd = ['pdflatex', '-interaction=nonstopmode', tex_file]
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    timeout=180,
-                    cwd='.',
-                    text=True
-                )
-                if result.returncode == 0 and os.path.exists(pdf_file):
-                    print(f"[SUCCESS] PDF generated via pdflatex: {pdf_file}")
-                else:
-                    print(f"[WARN] PDFLaTeX failed: {result.stdout[:200]} {result.stderr[:200]}")
+        # Compile with pdflatex into STATIC_DIR (Docker installs TeX Live)
+        if shutil.which('pdflatex'):
+            cmd = ['pdflatex', '-interaction=nonstopmode', f'-output-directory={STATIC_DIR}', str(tex_file)]
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=180,
+                text=True
+            )
+            if result.returncode == 0 and pdf_file.exists():
+                print(f"[SUCCESS] PDF generated via pdflatex: {pdf_file}")
             else:
-                print("[WARN] No LaTeX engine found (need 'tectonic' or 'pdflatex')")
-        except Exception as pdf_err:
-            print(f"[WARN] PDF generation failed: {pdf_err}")
+                print(f"[WARN] PDFLaTeX failed: {result.stdout[:200]} {result.stderr[:200]}")
+        else:
+            print("[WARN] pdflatex not found; PDF will not be generated")
     except Exception as e:
         print(f"[ERROR] Could not save resume: {e}")
     

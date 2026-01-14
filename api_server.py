@@ -62,8 +62,13 @@ def save_profile(profile: dict):
         raise HTTPException(status_code=500, detail="Failed to save profile")
 
 # Serve static files (PDFs, etc.) from project root
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="."), name="static")
+# Serve static files from dedicated 'static' directory inside repo
+_BASE_DIR = Path(__file__).resolve().parent
+_STATIC_DIR = _BASE_DIR / "static"
+_STATIC_DIR.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 # Allow Next.js (port 3000) to talk to Python (port 8000)
 # Configure CORS via env for safer deployments
@@ -215,7 +220,8 @@ def generate_application(job_id: str, db: Session = Depends(get_session)):
     # Preview uses generated text (LaTeX or fallback markdown)
     preview_md = resume if isinstance(resume, str) else str(resume)
 
-    pdf_url = f"/static/resume_{sanitized_job_id}.pdf"
+    static_pdf = _STATIC_DIR / f"resume_{sanitized_job_id}.pdf"
+    pdf_url = f"/static/{static_pdf.name}" if static_pdf.exists() else ""
     
     return {
         "status": "Generated",
