@@ -67,15 +67,18 @@ app.mount("/static", StaticFiles(directory="."), name="static")
 
 # Allow Next.js (port 3000) to talk to Python (port 8000)
 # Configure CORS via env for safer deployments
-cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "*")
-allow_origins = ["*"] if cors_origins_env.strip() == "*" else [o.strip() for o in cors_origins_env.split(",") if o.strip()]
-
+# CORS: allow configured origins and Vercel preview subdomains
+cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+allow_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
-    allow_credentials=True,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
+    expose_headers=["Content-Disposition"],
+    max_age=600,
 )
 
 # --- Health Endpoint ---
